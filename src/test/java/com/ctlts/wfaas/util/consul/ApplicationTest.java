@@ -20,6 +20,7 @@ import org.springframework.context.ApplicationContext;
 
 import com.ctlts.wfaas.adapter.consul.ConsulAdapter;
 import com.ctlts.wfaas.util.consul.Application.Command;
+import com.ctlts.wfaas.util.consul.Application.ListCommand;
 import com.ctlts.wfaas.util.consul.Application.ReadCommand;
 import com.ctlts.wfaas.util.consul.Application.WriteCommand;
 
@@ -37,10 +38,46 @@ public class ApplicationTest {
     @InjectMocks
 	private Application app;
     @InjectMocks
+    private ListCommand listCommand;
+    @InjectMocks
     private ReadCommand readCommand;
     @InjectMocks
     private WriteCommand writeCommand;
 
+    @Test
+    public void testList() throws Exception {
+        
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        PrintStream out = new PrintStream(buf);
+        System.setOut(out);
+        
+        when(ctx.getBean(eq("list"), eq(Command.class))).thenReturn(listCommand);
+        when(consulAdapter.getProperties(eq("root"))).thenReturn(Collections.singletonMap("property", "value"));
+        
+        app.run("list", "root");
+
+        assertEquals("Checking that the output buffer contains the expected output.", 
+                String.format("property%s", System.getProperty("line.separator")), buf.toString());
+        
+    }
+    
+    @Test
+    public void testList_Strip() throws Exception {
+        
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        PrintStream out = new PrintStream(buf);
+        System.setOut(out);
+        
+        when(ctx.getBean(eq("list"), eq(Command.class))).thenReturn(listCommand);
+        when(consulAdapter.getProperties(eq("root/"))).thenReturn(Collections.singletonMap("root/property", "value"));
+        
+        app.run("list", "-strip", "root/");
+
+        assertEquals("Checking that the output buffer contains the expected output.", 
+                String.format("property%s", System.getProperty("line.separator")), buf.toString());
+        
+    }
+    
     @Test
     public void testRead() throws Exception {
         

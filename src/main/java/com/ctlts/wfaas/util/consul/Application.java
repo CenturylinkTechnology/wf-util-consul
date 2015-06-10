@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Properties;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,11 @@ public class Application implements CommandLineRunner {
         
     }
     
+    @Bean(name = "list")
+    public ListCommand listCommand() {
+        return new ListCommand();
+    }
+    
     @Bean(name = "read")
     public ReadCommand readCommand() {
         return new ReadCommand();
@@ -76,6 +82,31 @@ public class Application implements CommandLineRunner {
     static interface Command {
 
         void execute(String[] args);
+        
+    }
+    
+    static class ListCommand implements Command {
+
+        @Autowired
+        private ConsulAdapter consulAdapter;
+        
+        @Override
+        public void execute(String[] args) {
+            
+            String path = args[args.length - 1];
+            
+            boolean strip = Arrays.stream(args)
+                    .filter(e -> "-strip".equals(e)).findFirst().isPresent();
+            
+            consulAdapter.getProperties(path).entrySet().stream().forEach(e -> {
+                
+                String value = strip ? e.getKey().replace(path, "") : e.getKey();
+                
+                System.out.println(value);
+                
+            });
+            
+        }
         
     }
     
