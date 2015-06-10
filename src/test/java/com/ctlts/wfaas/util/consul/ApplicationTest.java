@@ -19,10 +19,12 @@ import org.mockito.runners.MockitoJUnitRunner;
 import org.springframework.context.ApplicationContext;
 
 import com.ctlts.wfaas.adapter.consul.ConsulAdapter;
+import com.ctlts.wfaas.adapter.consul.VaultAdapter;
 import com.ctlts.wfaas.util.consul.Application.Command;
-import com.ctlts.wfaas.util.consul.Application.ListCommand;
-import com.ctlts.wfaas.util.consul.Application.ReadCommand;
-import com.ctlts.wfaas.util.consul.Application.WriteCommand;
+import com.ctlts.wfaas.util.consul.Application.ConsulListCommand;
+import com.ctlts.wfaas.util.consul.Application.ConsulReadCommand;
+import com.ctlts.wfaas.util.consul.Application.ConsulWriteCommand;
+import com.ctlts.wfaas.util.consul.Application.VaultWriteCommand;
 
 /**
  * @author mramach
@@ -34,15 +36,19 @@ public class ApplicationTest {
     @Mock
     private ConsulAdapter consulAdapter;
     @Mock
+    private VaultAdapter vaultAdapter;
+    @Mock
     private ApplicationContext ctx;
     @InjectMocks
 	private Application app;
     @InjectMocks
-    private ListCommand listCommand;
+    private ConsulListCommand consulListCommand;
     @InjectMocks
-    private ReadCommand readCommand;
+    private ConsulReadCommand consulReadCommand;
     @InjectMocks
-    private WriteCommand writeCommand;
+    private ConsulWriteCommand consulWriteCommand;
+    @InjectMocks
+    private VaultWriteCommand vaultWriteCommand;
 
     @Test
     public void testList() throws Exception {
@@ -51,10 +57,10 @@ public class ApplicationTest {
         PrintStream out = new PrintStream(buf);
         System.setOut(out);
         
-        when(ctx.getBean(eq("list"), eq(Command.class))).thenReturn(listCommand);
+        when(ctx.getBean(eq("consul-list"), eq(Command.class))).thenReturn(consulListCommand);
         when(consulAdapter.getProperties(eq("root"))).thenReturn(Collections.singletonMap("property", "value"));
         
-        app.run("list", "root");
+        app.run("consul-list", "root");
 
         assertEquals("Checking that the output buffer contains the expected output.", 
                 String.format("property%s", System.getProperty("line.separator")), buf.toString());
@@ -68,10 +74,10 @@ public class ApplicationTest {
         PrintStream out = new PrintStream(buf);
         System.setOut(out);
         
-        when(ctx.getBean(eq("list"), eq(Command.class))).thenReturn(listCommand);
+        when(ctx.getBean(eq("consul-list"), eq(Command.class))).thenReturn(consulListCommand);
         when(consulAdapter.getProperties(eq("root/"))).thenReturn(Collections.singletonMap("root/property", "value"));
         
-        app.run("list", "-strip", "root/");
+        app.run("consul-list", "-strip", "root/");
 
         assertEquals("Checking that the output buffer contains the expected output.", 
                 String.format("property%s", System.getProperty("line.separator")), buf.toString());
@@ -85,10 +91,10 @@ public class ApplicationTest {
         PrintStream out = new PrintStream(buf);
         System.setOut(out);
         
-        when(ctx.getBean(eq("read"), eq(Command.class))).thenReturn(readCommand);
+        when(ctx.getBean(eq("consul-read"), eq(Command.class))).thenReturn(consulReadCommand);
         when(consulAdapter.getProperties(eq("root"))).thenReturn(Collections.singletonMap("property", "value"));
         
-        app.run("read", "root");
+        app.run("consul-read", "root");
 
         assertEquals("Checking that the output buffer contains the expected output.", 
                 String.format("property=value%s", System.getProperty("line.separator")), buf.toString());
@@ -98,11 +104,22 @@ public class ApplicationTest {
     @Test
     public void testWrite() throws Exception {
         
-        when(ctx.getBean(eq("write"), eq(Command.class))).thenReturn(writeCommand);
+        when(ctx.getBean(eq("consul-write"), eq(Command.class))).thenReturn(consulWriteCommand);
         
-        app.run("write", "src/test/resources/source.properties");
+        app.run("consul-write", "src/test/resources/source.properties");
 
         verify(consulAdapter, atLeastOnce()).setProperty(eq("property"), eq("value"));
+        
+    }
+    
+    @Test
+    public void testVaultWrite() throws Exception {
+        
+        when(ctx.getBean(eq("vault-write"), eq(Command.class))).thenReturn(vaultWriteCommand);
+        
+        app.run("vault-write", "token", "secret", "src/test/resources/source.vault.properties");
+
+        verify(vaultAdapter, atLeastOnce()).setValue(eq("token"), eq("secret/property"), eq("value"));
         
     }
 	

@@ -20,6 +20,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import com.ctlts.wfaas.adapter.consul.ConsulAdapter;
+import com.ctlts.wfaas.adapter.consul.VaultAdapter;
 
 /**
  * @author mramach
@@ -48,19 +49,37 @@ public class Application implements CommandLineRunner {
         
     }
     
-    @Bean(name = "list")
-    public ListCommand listCommand() {
-        return new ListCommand();
+    @Bean
+    public VaultAdapter vaultAdapter() {
+        
+        VaultAdapter adapter = new VaultAdapter();
+        
+        if(env.containsProperty("vault.endpoint")) {
+            adapter.setVaultEndpoint(env.getProperty("vault.endpoint"));
+        }
+        
+        return adapter;
+        
     }
     
-    @Bean(name = "read")
-    public ReadCommand readCommand() {
-        return new ReadCommand();
+    @Bean(name = "consul-list")
+    public ConsulListCommand consulListCommand() {
+        return new ConsulListCommand();
+    }
+    
+    @Bean(name = "consul-read")
+    public ConsulReadCommand consulReadCommand() {
+        return new ConsulReadCommand();
     }
 
-    @Bean(name = "write")
-    public WriteCommand writeCommand() {
-        return new WriteCommand();
+    @Bean(name = "consul-write")
+    public ConsulWriteCommand consulWriteCommand() {
+        return new ConsulWriteCommand();
+    }
+    
+    @Bean(name = "vault-write")
+    public VaultWriteCommand vaultWriteCommand() {
+        return new VaultWriteCommand();
     }
     
     @Override
@@ -85,7 +104,7 @@ public class Application implements CommandLineRunner {
         
     }
     
-    static class ListCommand implements Command {
+    static class ConsulListCommand implements Command {
 
         @Autowired
         private ConsulAdapter consulAdapter;
@@ -110,7 +129,7 @@ public class Application implements CommandLineRunner {
         
     }
     
-    static class ReadCommand implements Command {
+    static class ConsulReadCommand implements Command {
 
         @Autowired
         private ConsulAdapter consulAdapter;
@@ -129,7 +148,7 @@ public class Application implements CommandLineRunner {
         
     }
     
-    static class WriteCommand implements Command {
+    static class ConsulWriteCommand implements Command {
 
         @Autowired
         private ConsulAdapter consulAdapter;
@@ -157,6 +176,44 @@ public class Application implements CommandLineRunner {
             properties.entrySet().forEach(e -> {
                 
                 consulAdapter.setProperty(String.valueOf(e.getKey()), String.valueOf(e.getValue()));
+                
+            });
+            
+        }
+        
+    }
+    
+    static class VaultWriteCommand implements Command {
+
+        @Autowired
+        private VaultAdapter vaultAdapter;
+        
+        @Override
+        public void execute(String[] args) {
+
+            String token = args[1];
+            String mount = args[2];
+            
+            Path cwd = Paths.get(System.getProperty("user.dir"));
+            Path path = Paths.get(args[3]);
+
+            if(!path.isAbsolute()) {
+                path = cwd.resolve(path);
+            }
+            
+            Properties properties = new Properties();
+            
+            try {
+            
+                properties.load(Files.newInputStream(path));
+                
+            } catch (IOException e) {
+                System.out.println(e.getMessage());
+            }
+            
+            properties.entrySet().forEach(e -> {
+                
+                vaultAdapter.setValue(token, mount + "/" + String.valueOf(e.getKey()), String.valueOf(e.getValue()));
                 
             });
             
